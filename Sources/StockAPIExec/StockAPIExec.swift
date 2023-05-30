@@ -11,7 +11,7 @@ import StockAPI
 @main
 struct StockAPIExec{
     
-    static let stocksAPI = StockAPI()
+    static var stocksAPI = StockAPI()
     static func main() async{
         
         

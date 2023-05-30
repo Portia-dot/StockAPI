@@ -21,6 +21,7 @@ public enum APIError: CustomNSError{
         case .invalidURL: return 0
         case .invalidResponseType: return 1
         case .httpStatusCodeFailed: return 2
+
         }
     }
     public var errorUserInfo: [String : Any]{
