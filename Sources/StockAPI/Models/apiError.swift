@@ -7,12 +7,12 @@
 
 import Foundation
 
-public enum APIError: CustomNSError{
+public enum APIError: CustomNSError {
     case invalidURL
     case invalidResponseType
-    
     case httpStatusCodeFailed(statusCode: Int, error: Error?)
-    
+    case fetchCookieAndCrumbFailed
+
     public static var errorDomain: String {
         "StocksAPI"
     }
@@ -21,7 +21,7 @@ public enum APIError: CustomNSError{
         case .invalidURL: return 0
         case .invalidResponseType: return 1
         case .httpStatusCodeFailed: return 2
-
+        case .fetchCookieAndCrumbFailed: return 3
         }
     }
     public var errorUserInfo: [String : Any]{
@@ -37,6 +37,8 @@ public enum APIError: CustomNSError{
             }else{
                 text = "Error: Status Code \(statusCode)"
             }
+        case .fetchCookieAndCrumbFailed:
+            text = "Failed to fetch cookie and crumb"
         }
         return [NSLocalizedDescriptionKey: text]
     }
