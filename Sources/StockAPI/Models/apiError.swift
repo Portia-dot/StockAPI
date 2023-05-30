@@ -12,6 +12,8 @@ public enum APIError: CustomNSError {
     case invalidResponseType
     case httpStatusCodeFailed(statusCode: Int, error: Error?)
     case fetchCookieAndCrumbFailed
+    case failedToGetHTTPResponse
+    case failedToGetCookie
 
     public static var errorDomain: String {
         "StocksAPI"
@@ -22,6 +24,8 @@ public enum APIError: CustomNSError {
         case .invalidResponseType: return 1
         case .httpStatusCodeFailed: return 2
         case .fetchCookieAndCrumbFailed: return 3
+        case .failedToGetHTTPResponse: return 4
+        case .failedToGetCookie: return 5
         }
     }
     public var errorUserInfo: [String : Any]{
@@ -39,6 +43,10 @@ public enum APIError: CustomNSError {
             }
         case .fetchCookieAndCrumbFailed:
             text = "Failed to fetch cookie and crumb"
+        case .failedToGetCookie:
+            text = "Failed to fetch cookie"
+        case .failedToGetHTTPResponse:
+            text = "Failed to get HTTP Response"
         }
         return [NSLocalizedDescriptionKey: text]
     }

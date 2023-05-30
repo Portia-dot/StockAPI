@@ -2,6 +2,7 @@ import Foundation
 
 public struct StockAPI {
     private let session = URLSession.shared
+    private let baseURL = "https://query1.finance.yahoo.com"
     private let jsonDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .secondsSince1970
@@ -61,78 +62,9 @@ public struct StockAPI {
     }
     
     
-    private let baseURL = "https://query1.finance.yahoo.com"
     
-        // ...
-        private var cookieString: String?
-        private var crumb: String?
 
-        public init() {}
-    
-        public mutating func fetchQuotes(symbols: String) async throws -> [Quotes] {
-            // Fetch cookie and crumb if they are not available
-            if cookieString == nil || crumb == nil {
-                do {
-                    let (cookie, crumb) = try await fetchCookieAndCrumb()
-                    self.cookieString = cookie
-                    self.crumb = crumb
-                    print("Cookie: \(cookie)")
-                    print("Crumb: \(crumb)")
-                } catch {
-                    throw APIError.fetchCookieAndCrumbFailed
-                }
-            }
-
-            guard var urlComponents = URLComponents(string: "\(baseURL)/v7/finance/quote") else {
-                throw APIError.invalidURL
-            }
-            urlComponents.queryItems = [
-                .init(name: "symbols", value: symbols),
-                .init(name: "crumb", value: crumb)
-            ]
-            guard let url = urlComponents.url else {
-                throw APIError.invalidURL
-            }
-
-            var request = URLRequest(url: url)
-            request.addValue(cookieString!, forHTTPHeaderField: "Cookie")
-
-            let (quoteData, quoteResponse) = try await URLSession.shared.data(for: request)
-            
-            guard let quoteHttpResponse = quoteResponse as? HTTPURLResponse,
-                  quoteHttpResponse.statusCode == 200 else {
-                throw APIError.httpStatusCodeFailed(statusCode: (quoteResponse as? HTTPURLResponse)?.statusCode ?? 0, error: nil)
-            }
-
-            let quoteResponseDecoded = try JSONDecoder().decode(QuoteResponse.self, from: quoteData)
-
-            if let error = quoteResponseDecoded.error {
-                throw APIError.httpStatusCodeFailed(statusCode: quoteHttpResponse.statusCode, error: error)
-            }
-
-            return quoteResponseDecoded.data ?? []
-        }
-        
-        private func fetchCookieAndCrumb() async throws -> (String, String) {
-            let cookieUrl = URL(string: "https://fc.yahoo.com")!
-            let (_, cookieResponse) = try await URLSession.shared.data(from: cookieUrl)
-            
-            guard let cookieHttpResponse = cookieResponse as? HTTPURLResponse,
-                  let cookie = cookieHttpResponse.allHeaderFields["Set-Cookie"] as? String else {
-                throw APIError.httpStatusCodeFailed(statusCode: 0, error: nil)
-            }
-
-            let crumbUrl = URL(string: "https://query2.finance.yahoo.com/v1/test/getcrumb")!
-            var crumbRequest = URLRequest(url: crumbUrl)
-            crumbRequest.addValue(cookie, forHTTPHeaderField: "Cookie")
-            let (crumbData, _) = try await URLSession.shared.data(for: crumbRequest)
-
-            let crumb = String(decoding: crumbData, as: UTF8.self)
-            return (cookie, crumb)
-        }
-
-    
-    
+    //Error
     private func fetch <D: Decodable> (url: URL) async throws -> (D, Int){
         let (data, reponse) = try await session.data(from: url)
         let statusCode = try validateHTTPResponse(reponse)
@@ -151,4 +83,59 @@ public struct StockAPI {
         }
         return httpResponse.statusCode
     }
+    
+    
+    
+    public init(){}
+
+    public func fetchQuotes(symbols: String) async throws -> [Quotes] {
+        guard let cookieUrl = URL(string: "https://fc.yahoo.com"),
+              let crumbUrl = URL(string: "https://query2.finance.yahoo.com/v1/test/getcrumb"),
+              var urlComponents = URLComponents(string: "\(baseURL)/v7/finance/quote") else {
+            throw APIError.invalidURL
+        }
+
+        let (_, cookieResponse) = try await URLSession.shared.data(from: cookieUrl)
+        guard let cookieHttpResponse = cookieResponse as? HTTPURLResponse else {
+            throw APIError.failedToGetHTTPResponse
+        }
+        guard cookieHttpResponse.statusCode == 404,
+              let cookieString = cookieHttpResponse.allHeaderFields["Set-Cookie"] as? String else {
+            throw APIError.failedToGetCookie
+        }
+
+
+        var crumbRequest = URLRequest(url: crumbUrl)
+        crumbRequest.addValue(cookieString, forHTTPHeaderField: "Cookie")
+        let (crumbData, _) = try await URLSession.shared.data(for: crumbRequest)
+        let crumb = String(decoding: crumbData, as: UTF8.self)
+
+        urlComponents.queryItems = [
+            .init(name: "symbols", value: symbols),
+            .init(name: "crumb", value: crumb)
+        ]
+        guard let url = urlComponents.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.addValue(cookieString, forHTTPHeaderField: "Cookie")
+
+        let (quoteData, quoteResponse) = try await URLSession.shared.data(for: request)
+        guard let quoteHttpResponse = quoteResponse as? HTTPURLResponse,
+              quoteHttpResponse.statusCode == 200 else {
+            throw APIError.httpStatusCodeFailed(statusCode: (quoteResponse as? HTTPURLResponse)?.statusCode ?? 0, error: nil)
+        }
+
+        do {
+            let quoteResponseDecoded = try JSONDecoder().decode(QuoteResponse.self, from: quoteData)
+            if let error = quoteResponseDecoded.error {
+                throw APIError.httpStatusCodeFailed(statusCode: quoteHttpResponse.statusCode, error: error)
+            }
+            return quoteResponseDecoded.data ?? []
+        } catch {
+            throw APIError.failedToGetHTTPResponse
+        }
+    }
+
 }
