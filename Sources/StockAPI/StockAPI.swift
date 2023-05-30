@@ -8,6 +8,59 @@ public struct StockAPI {
         return decoder
     }()
     
+    
+    //Chart
+    public func fetchChartData(symbol: String, range: ChartRange) async throws -> ChartData? {
+        guard var urlComponents = URLComponents(string: "\(baseURL)/v8/finance/chart/\(symbol)")else{
+            throw APIError.invalidURL
+        }
+        urlComponents.queryItems = [
+            .init(name: "range", value: range.rawValue),
+            .init(name: "interval", value: range.interval),
+            .init(name: "indicator", value: "quote"),
+            .init(name: "includeTimeStamps", value: "true")
+        
+        ]
+        guard let url = urlComponents.url else{
+            throw APIError.invalidURL
+        }
+        let (response, statusCode): (ChartResponse, Int) = try await fetch(url: url)
+        if let error =  response.error {
+            throw APIError.httpStatusCodeFailed(statusCode: statusCode, error: error)
+        }
+        return response.data?.first
+    }
+
+    
+    //Search Query
+    public func searchTickers(query: String, isEquityTypeOnly: Bool = true) async throws -> [SearchQuery]{
+        guard var urlComponents = URLComponents(string: "\(baseURL)/v1/finance/search")else{
+            throw APIError.invalidURL
+        }
+        urlComponents.queryItems = [
+            .init(name: "q", value: query),
+            .init(name: "quotesCount", value: "20"),
+            .init(name: "lang", value: "en-US")
+        
+        ]
+        guard let url = urlComponents.url else{
+            throw APIError.invalidURL
+        }
+        
+        let (response, statusCode): (searchQueryResponse, Int) = try await fetch(url: url)
+        if let error = response.error {
+            throw APIError.httpStatusCodeFailed(statusCode: statusCode, error: error)
+        }
+        if isEquityTypeOnly{
+            return (response.data ?? [])
+                .filter{ ($0.quoteType ?? "").localizedCaseInsensitiveCompare("equity") == .orderedSame}
+        }else{
+            return response.data ?? []
+        }
+        
+    }
+    
+    
     private let baseURL = "https://query1.finance.yahoo.com"
     
     public func fetchQuotes(symbols: String) async throws -> [Quotes]{
@@ -21,7 +74,7 @@ public struct StockAPI {
 
         // Parse crumb value
         let crumb = String(decoding: crumbData, as: UTF8.self)
-
+        
         guard var urlComponents = URLComponents(string: "\(baseURL)/v7/finance/quote") else {
             throw APIError.invalidURL
         }
@@ -69,6 +122,7 @@ public struct StockAPI {
 
     public init() {
     }
+    
     
     private func validateHTTPResponse(_ response: URLResponse) throws -> Int{
         guard let httpResponse = response as? HTTPURLResponse else{

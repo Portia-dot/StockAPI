@@ -16,8 +16,18 @@ struct StockAPIExec{
         
         
         do {
-            let quotes = try await stocksAPI.fetchQuotes(symbols: "MSFT,AAPL,TSLA")
+            let quotes = try await stocksAPI.fetchQuotes(symbols: "AAPL, MSFT, GOOG, TSLA")
             print(quotes)
+            
+           // Tickers
+            let tickers = try await stocksAPI.searchTickers(query: "tesla")
+            print(tickers)
+            
+            //Chart
+            
+            let chart = try await stocksAPI.fetchChartData(symbol: "AAPL", range: .oneDay)
+            
+                print(chart)
         } catch {
             print(error.localizedDescription)
         }
