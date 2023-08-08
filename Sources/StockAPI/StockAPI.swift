@@ -95,14 +95,14 @@ public struct StockAPI {
             throw APIError.invalidURL
         }
 
-//        let (_, cookieResponse) = try await URLSession.shared.data(from: cookieUrl)
-//        guard let cookieHttpResponse = cookieResponse as? HTTPURLResponse else {
-//            throw APIError.failedToGetHTTPResponse
-//        }
-//        guard cookieHttpResponse.statusCode == 404,
-//              let cookieString = cookieHttpResponse.allHeaderFields["Set-Cookie"] as? String else {
-//            throw APIError.failedToGetCookie
-//        }
+        let (_, cookieResponse) = try await URLSession.shared.data(from: cookieUrl)
+        guard let cookieHttpResponse = cookieResponse as? HTTPURLResponse else {
+            throw APIError.failedToGetHTTPResponse
+        }
+        guard cookieHttpResponse.statusCode == 404,
+              let cookieString = cookieHttpResponse.allHeaderFields["Set-Cookie"] as? String else {
+            throw APIError.failedToGetCookie
+        }
 
 
         var crumbRequest = URLRequest(url: crumbUrl)
